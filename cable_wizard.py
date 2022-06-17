@@ -139,9 +139,7 @@ class VIEW3D_OT_cable_wizard(Operator):
         mid_vert = (mid_x, mid_y, mid_z, w)
         rnd_vert_1 = self.generate_point(rnd1_loc)
         rnd_vert_2 = self.generate_point(rnd2_loc)
-        # create a list with these 3 points
-        vector_list = [rnd_vert_1, mid_vert, rnd_vert_2]
-        return vector_list
+        return [rnd_vert_1, mid_vert, rnd_vert_2]
 
     def get_grease_points(self, context):
         # grease pencil
@@ -168,9 +166,7 @@ class VIEW3D_OT_cable_wizard(Operator):
         group_index = v_group.index
         # find the vertices that are part of our group
         for v in ob.data.vertices:
-            for g in v.groups:
-                if g.group == group_index:
-                    group_list.append(v)
+            group_list.extend(v for g in v.groups if g.group == group_index)
         rnd1 = random.choice(group_list)
         rnd2 = random.choice(group_list)
 
@@ -245,10 +241,7 @@ class VIEW3D_OT_cable_edit(Operator):
     @classmethod
     def poll(cls, context):
         for ob in context.selected_objects:
-            if not ob.type == 'CURVE' or len(context.selected_objects)==0:
-                return False
-            else:
-                return True
+            return ob.type == 'CURVE' and len(context.selected_objects) != 0
 
     def execute(self, context):
         obs = context.selected_objects

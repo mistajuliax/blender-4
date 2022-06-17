@@ -63,11 +63,14 @@ class VraisTools(bpy.types.AddonPreferences):
 def configure_vrais_cubemap_path(scn):
     vs = scn.vrais_settings
     suffix = ".jpg"
-    if vs.filename=="":
-        vrais_cubemap_path = os.path.join(vs.cube_filepath, os.path.basename(os.path.normpath(vs.source_path)) + suffix)
-    else:
-        vrais_cubemap_path = os.path.join(vs.cube_filepath, vs.filename + suffix)
-    return vrais_cubemap_path
+    return (
+        os.path.join(
+            vs.cube_filepath,
+            os.path.basename(os.path.normpath(vs.source_path)) + suffix,
+        )
+        if vs.filename == ""
+        else os.path.join(vs.cube_filepath, vs.filename + suffix)
+    )
 
 # create a new temporary scene, which is used to assemble the cubemap stripe from the 12 cubemap tiles. 
 def create_new_scene(context):
@@ -118,19 +121,20 @@ def img_node_creator(new_scn, scn):
                 type = 1
     if type == 1:
         img_dict = {
-            "EAST_%s_R" % (frame):1,     
-            "WEST_%s_R" % (frame):2,     
-            "ZENITH_%s_R" % (frame):3,     
-            "NADIR_%s_R" % (frame):4,     
-            "NORTH_%s_R" % (frame):5,     
-            "SOUTH_%s_R" % (frame):6,
-            "EAST_%s_L" % (frame):7,     
-            "WEST_%s_L" % (frame):8,     
-            "ZENITH_%s_L" % (frame):9,     
-            "NADIR_%s_L" % (frame):10,     
-            "NORTH_%s_L" % (frame):11,     
-            "SOUTH_%s_L" % (frame):12      
+            f"EAST_{frame}_R": 1,
+            f"WEST_{frame}_R": 2,
+            f"ZENITH_{frame}_R": 3,
+            f"NADIR_{frame}_R": 4,
+            f"NORTH_{frame}_R": 5,
+            f"SOUTH_{frame}_R": 6,
+            f"EAST_{frame}_L": 7,
+            f"WEST_{frame}_L": 8,
+            f"ZENITH_{frame}_L": 9,
+            f"NADIR_{frame}_L": 10,
+            f"NORTH_{frame}_L": 11,
+            f"SOUTH_{frame}_L": 12,
         }
+
     else:
         img_dict = {
             "000004_R":1,
@@ -148,10 +152,9 @@ def img_node_creator(new_scn, scn):
         }
     # create new nodes with the images and names from 1 to 12.
     # with the node.name we pass the index on to the connector function
-    for img in img_dict:
-        img_path = os.path.join(scn.vrais_settings.source_path, img + "." + file_format)
+    for img, img_index in img_dict.items():
+        img_path = os.path.join(scn.vrais_settings.source_path, f"{img}.{file_format}")
         print(img_path)
-        img_index = img_dict[img]
         node = tree.nodes.new(type="CompositorNodeImage")
         node.location = node.location[0], node.location[1] -  img_index*300
         try:
@@ -161,9 +164,8 @@ def img_node_creator(new_scn, scn):
             testlist.append(img)
         except:
             print("there was a problem with the image path")
-    pathcheck = len(testlist)==12
     # the pathcheck will return True only if there are really 12 cubemap tile images
-    return pathcheck
+    return len(testlist)==12
 
 
 # connect the 12 images with proper offset and size
@@ -172,7 +174,7 @@ def connector(new_scn, offset):
     nodes = tree.nodes
     links = tree.links
     res = new_scn.render.resolution_percentage
-    offset = offset/100*res 
+    offset = offset/100*res
     center = -(offset*5)-(offset/2)
 
     # the first and last node need special treatment...
@@ -188,11 +190,11 @@ def connector(new_scn, offset):
             links.new(tl_1.outputs[0], mix.inputs[1])
 
         tl = tree.nodes.new(type="CompositorNodeTransform")
-        tl.inputs['X'].default_value = center + offset * i 
+        tl.inputs['X'].default_value = center + offset * i
         tl.location = img_1.location[0] + 100, img_2.location[1]
         mix.location = tl.location[0] + 200, img_2.location[1] + 100
         links.new(img_2.outputs[0], tl.inputs[0])
-        if not i ==1:
+        if i != 1:
             links.new(img_1.outputs[0], mix.inputs[1])
         links.new(tl.outputs[0], mix.inputs[2])
         img_2.name = "old"
@@ -207,15 +209,10 @@ def connector(new_scn, offset):
 # upload the vr rendering to vrais.io
 def vr_uploader(scn, path):
     filepath = path
-    f = open(filepath, "rb")
-    chunk = f.read()
-    f.close()
+    with open(filepath, "rb") as f:
+        chunk = f.read()
     vs = scn.vrais_settings
-    if scn.vrais_enum == 'VRAIS_CUBE':
-        is_cubemap = "1"
-    else:
-        is_cubemap = "0"
-
+    is_cubemap = "1" if scn.vrais_enum == 'VRAIS_CUBE' else "0"
     headers = {
         "Content-type": "multipart/form-data",
         "Accept": "text/plain",
@@ -302,7 +299,7 @@ class VRAIS_OT_setup_vr_panorama(bpy.types.Operator):
 
         cam_data.cycles.panorama_type = 'EQUIRECTANGULAR'
         cam_data.type = 'PANO'
-        
+
         try:
             cam_data.stereo.use_spherical_stereo = True
         except:
@@ -310,7 +307,7 @@ class VRAIS_OT_setup_vr_panorama(bpy.types.Operator):
                 {'ERROR'}, 
                 "You seem to be using Blender 2.77 or lower, which does not support Spherical Stereo. Please consider upgrading to at least 2.78."
                 )
-            
+
         scn.vrais_enum = 'VRAIS_EQUI'
         scn.vrais_settings.equi_filepath = render.filepath
 

@@ -27,9 +27,7 @@ class VIEW3D_OT_toggle_pivot(Operator):
  
     def execute(self, context):
         pivot = context.space_data.pivot_point
-        if pivot == "CURSOR":
-            context.space_data.pivot_point = "MEDIAN_POINT"
-        elif pivot == "INDIVIDUAL_ORIGINS":
+        if pivot in ["CURSOR", "INDIVIDUAL_ORIGINS"]:
             context.space_data.pivot_point = "MEDIAN_POINT"
         else:
             context.space_data.pivot_point = "CURSOR"

@@ -49,48 +49,47 @@ def enable_slot_recording():
     context.scene.record_settings = True
 
 def return_proplist():
-    proplist = [
-    "aa_samples",
-    "ao_bounces_render",
-    "ao_samples",
-    "blur_glossy",
-    "caustics_reflective",
-    "caustics_refractive",
-    "dicing_rate",
-    "diffuse_bounces",
-    "diffuse_samples",
-    "film_exposure",
-    "film_transparent",
-    "filter_type",
-    "filter_width",
-    "glossy_bounces",
-    "glossy_samples",
-    "light_sampling_threshold",
-    "max_bounces",
-    "max_subdivisions",
-    "mesh_light_samples",
-    "motion_blur_position",
-    "pixel_filter_type",
-    "progressive",
-    "rolling_shutter_type",
-    "rolling_shutter_duration",
-    "sample_clamp_direct",
-    "sample_clamp_indirect",
-    "sample_all_lights_indirect",
-    "sample_all_lights_direct",
-    "samples",
-    "sampling_pattern",
-    "transmission_bounces",
-    "subsurface_samples",
-    "transmission_samples",
-    "transparent_max_bounces",
-    "use_square_samples",
-    "volume_bounces",
-    "volume_max_steps",
-    "volume_samples",
-    "volume_step_size"
+    return [
+        "aa_samples",
+        "ao_bounces_render",
+        "ao_samples",
+        "blur_glossy",
+        "caustics_reflective",
+        "caustics_refractive",
+        "dicing_rate",
+        "diffuse_bounces",
+        "diffuse_samples",
+        "film_exposure",
+        "film_transparent",
+        "filter_type",
+        "filter_width",
+        "glossy_bounces",
+        "glossy_samples",
+        "light_sampling_threshold",
+        "max_bounces",
+        "max_subdivisions",
+        "mesh_light_samples",
+        "motion_blur_position",
+        "pixel_filter_type",
+        "progressive",
+        "rolling_shutter_type",
+        "rolling_shutter_duration",
+        "sample_clamp_direct",
+        "sample_clamp_indirect",
+        "sample_all_lights_indirect",
+        "sample_all_lights_direct",
+        "samples",
+        "sampling_pattern",
+        "transmission_bounces",
+        "subsurface_samples",
+        "transmission_samples",
+        "transparent_max_bounces",
+        "use_square_samples",
+        "volume_bounces",
+        "volume_max_steps",
+        "volume_samples",
+        "volume_step_size",
     ]
-    return proplist
 
 
 # save all visibly relevant cycles scene settings
@@ -110,10 +109,7 @@ def save_settings_to_storage(slot_id):
         slot_id = str(get_slot_id())
         bpy.context.window_manager.recent_render = str(int(slot_id)+1)
     # create the dict for the slot
-    slot_id_dict = {}
-    # fill the dict with the properties
-    for prop in proplist:
-        slot_id_dict[prop] = getattr(context.scene.cycles, prop)
+    slot_id_dict = {prop: getattr(context.scene.cycles, prop) for prop in proplist}
     # assign the prop dict to the slot id as value
     renderslot_properties[slot_id] = slot_id_dict
 
@@ -127,10 +123,7 @@ def load_settings_from_storage(context, slot_id):
                 master = s
         renderslot_properties = master.get('renderslot_properties')
         # find the active slot id
-        if not slot_id == 8:
-            slot_id = str(get_slot_id())
-        else:
-            slot_id = str(slot_id)
+        slot_id = str(get_slot_id()) if slot_id != 8 else str(slot_id)
         # get the dict for that id
         prop_dict = renderslot_properties[slot_id]
         # read out the properties from the script and set them
@@ -165,10 +158,7 @@ class RENDER_TWEAKER_OT_save_main_rendersettings(bpy.types.Operator):
         # Make this the only master scene
         # (There can be only one! ;)
         for s in bpy.data.scenes:
-            if s == scene:
-                s.master_scene = True
-            else:
-                s.master_scene = False
+            s.master_scene = s == scene
         # Save the settings to an artificial 9th slot
         save_settings_to_storage(8)
         return {'FINISHED'}
@@ -234,7 +224,7 @@ class RENDER_TWEAKER_OT_tweaker_preset_add(AddPresetBase, bpy.types.Operator):
 
     preset_values = []
     for p in return_proplist():
-        pv = "cycles." + p
+        pv = f"cycles.{p}"
         preset_values.append(pv)
 
 
@@ -261,9 +251,9 @@ class RENDER_TWEAKER_PT_main_ui(bpy.types.Panel):
         row.operator("render.tweaker_preset_add", text="", icon='ZOOMOUT').remove_active=True
 
         row = layout.row(align=True)
-        if not bpy.context.window_manager.recent_render == "":
+        if bpy.context.window_manager.recent_render != "":
             slot = bpy.context.window_manager.recent_render
-            row.label(text="Recently stored: Slot %s" %slot)
+            row.label(text=f"Recently stored: Slot {slot}")
         else:
             row.label(text="No slot stored in this session yet.")
         if scene.record_settings:
@@ -271,7 +261,7 @@ class RENDER_TWEAKER_PT_main_ui(bpy.types.Panel):
         else:
             row.operator("scene.enable_slot_recording", text="Slot Recording Disabled", icon="RADIOBUT_OFF")
 
-        
+
 
         row = layout.row(align=True)
         row.operator("scene.save_main_rendersettings", text="Quick Save Settings")

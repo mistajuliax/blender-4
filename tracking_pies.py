@@ -113,15 +113,15 @@ class CLIP_PIE_marker_pie(Menu):
             pie.prop(track_active, "use_brute", text="Use Brute Force")
         # Use The blue Channel
             pie.prop(track_active, "use_blue_channel", text="Blue Channel")
-        # Match Either Previous Frame Or Keyframe        
+        # Match Either Previous Frame Or Keyframe
             if track_active.pattern_match == "PREV_FRAME":
                 prop = pie.operator("wm.context_set_enum", text="Match Previous", icon='KEYINGSET')
-                prop.data_path = "space_data.clip.tracking.tracks.active.pattern_match"
                 prop.value = 'KEYFRAME'
             else:
                 prop = pie.operator("wm.context_set_enum", text="Match Keyframe", icon='KEY_HLT')
-                prop.data_path = "space_data.clip.tracking.tracks.active.pattern_match"
                 prop.value = 'PREV_FRAME'
+
+            prop.data_path = "space_data.clip.tracking.tracks.active.pattern_match"
 
 
 class CLIP_PIE_tracking_pie(Menu):
@@ -328,8 +328,7 @@ def unregister():
         bpy.utils.unregister_class(cls)
 
     wm = bpy.context.window_manager
-    kc = wm.keyconfigs.addon
-    if kc:
+    if kc := wm.keyconfigs.addon:
         for km, kmi in addon_keymaps:
             km.keymap_items.remove(kmi)
     addon_keymaps.clear()

@@ -6,15 +6,13 @@ def get_marker_coordinates_in_pixels(context, track, frame_number):
     width, height = context.space_data.clip.size
     # return the marker coordinates in relation to the clip
     marker = track.markers.find_frame(frame_number)
-    vector = Vector((marker.co[0] * width, marker.co[1] * height))
-    return vector
+    return Vector((marker.co[0] * width, marker.co[1] * height))
 
 
 def marker_velocity(context, track, frame):
     marker_a = get_marker_coordinates_in_pixels(context, track, frame)
     marker_b = get_marker_coordinates_in_pixels(context, track, frame-1)
-    marker_velocity = marker_a - marker_b
-    return marker_velocity
+    return marker_a - marker_b
 
 
 def get_difference(track_slope, average_slope, axis):
@@ -27,8 +25,7 @@ def get_difference(track_slope, average_slope, axis):
 def get_slope(context, track, frame):
     v1 = marker_velocity(context, track, frame)
     v2 = marker_velocity(context, track, frame-1)
-    slope = v1-v2
-    return slope
+    return v1-v2
 
 def check_evaluation_time(track, frame, evaluation_time):
     # check each frame for the evaluation time
@@ -82,7 +79,7 @@ def filter_track_ends(context, threshold, evaluation_time):
     valid_tracks = get_valid_tracks(context.scene, tracks)
     to_clean = {}
     for track, list in valid_tracks.items():
-        f = list[-1] 
+        f = list[-1]
         # first get the slope of the current track on current frame
         track_slope = get_slope(context, track, f)
         # if the track is as long as the evaluation time, calculate the average slope
@@ -91,13 +88,17 @@ def filter_track_ends(context, threshold, evaluation_time):
             for i in range(f-evaluation_time, f):
                 # get the slopes of all frames during the evaluation time
                 av_slope = get_slope(context, track, i)
-                average_slope += av_slope 
+                average_slope += av_slope
             average_slope = average_slope / evaluation_time
             # check abs difference for both values in the vector
             for i in [0,1]:
                 # if the difference between average_slope and track_slope on any axis is above threshold,
                 # add to the to_clean dictionary
-                if not track in to_clean and get_difference(track_slope, average_slope, i) > threshold:
+                if (
+                    track not in to_clean
+                    and get_difference(track_slope, average_slope, i)
+                    > threshold
+                ):
                     to_clean[track] = f
     # now we can disable the last frame of the identified tracks
     for track, frame in to_clean.items():
@@ -114,15 +115,19 @@ def filter_foreground(context, evaluation_time, threshold):
     for track, list in valid_tracks.items():
         f = list[-1]
         # first get the average of the last frame during evaluation time
-        if check_evaluation_time(track, f, evaluation_time) and not track in foreground:
+        if (
+            check_evaluation_time(track, f, evaluation_time)
+            and track not in foreground
+        ):
             track_average = get_average_slope(context, track, f, evaluation_time)
             # then get the average of all other tracks
             global_average = Vector().to_2d()
-            currently_valid_tracks = []
-            # first check if the other tracks are valid too.
-            for t in tracks:
-                if check_evaluation_time(t, f, evaluation_time) and not t == track:
-                    currently_valid_tracks.append(t)
+            currently_valid_tracks = [
+                t
+                for t in tracks
+                if check_evaluation_time(t, f, evaluation_time) and t != track
+            ]
+
             for t in currently_valid_tracks:
                 other_average = get_average_slope(context, t, f, evaluation_time)
                 global_average += other_average

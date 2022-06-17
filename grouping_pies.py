@@ -44,8 +44,7 @@ def check_if_empty(context):
         return True
 
 def group_items(self, context):
-    items = [(g.name, g.name, g.name) for g in bpy.data.groups] 
-    return items 
+    return [(g.name, g.name, g.name) for g in bpy.data.groups] 
 
 def assign_group(self, context):
     for ob in context.selected_objects:
@@ -97,7 +96,7 @@ class VIEW3D_OT_NameGroupFromObject(Operator):
     def execute(self, context):
         ob = context.active_object
         # Only if there is one group the object is part of, rename it
-        if not len(ob.users_group) > 1:
+        if len(ob.users_group) <= 1:
             ob.users_group[0].name = ob.name
         return {'FINISHED'} 
 
@@ -114,7 +113,7 @@ class VIEW3D_OT_NameObjectFromGroup(Operator):
     def execute(self, context):
         # Only if there is one group the object is part of, rename it
         for ob in context.selected_objects:
-            if not len(ob.users_group) > 1:
+            if len(ob.users_group) <= 1:
                 ob.name = ob.users_group[0].name
         return {'FINISHED'} 
 

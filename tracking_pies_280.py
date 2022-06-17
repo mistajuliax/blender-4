@@ -266,8 +266,7 @@ def unregister():
         bpy.utils.unregister_class(cls)
 
     wm = bpy.context.window_manager
-    kc = wm.keyconfigs.addon
-    if kc:
+    if kc := wm.keyconfigs.addon:
         for km, kmi in addon_keymaps:
             km.keymap_items.remove(kmi)
     addon_keymaps.clear()

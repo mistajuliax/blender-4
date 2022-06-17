@@ -22,16 +22,10 @@ def set_mask_mode(context, mask):
     active_node = scn.node_tree.nodes.active
     # set mode to mask and select the mask
     for area in context.screen.areas:
-        active_space = area.spaces.active
-        if area.type == 'IMAGE_EDITOR' or area.type == 'CLIP_EDITOR':
+        if area.type in ['IMAGE_EDITOR', 'CLIP_EDITOR']:
+            active_space = area.spaces.active
             active_space.mode = 'MASK'
             active_space.mask = mask
-        # if it is the image editor, assign the viewer node if possible
-        elif area.type == 'IMAGE_EDITOR':
-            try:
-                active_space.image = bpy.data.images["Viewer Node"]
-            except:
-                print("There is no Viewer Node yet")
 
 
 def selected_mask_points(context):
@@ -41,9 +35,7 @@ def selected_mask_points(context):
         for l in mask.layers: 
             if not l.hide and not l.hide_select:
                 for s in l.splines:
-                    for p in s.points:
-                        if p.select:
-                            pointlist.append(p)
+                    pointlist.extend(p for p in s.points if p.select)
         return pointlist
     except:
         print("no points selected?")
@@ -87,24 +79,17 @@ class NODE_OT_add_mask_to_node(Operator):
         links = tree.links
         clip = scn.active_clip
 
-        active_node = tree.nodes.active
-        if active_node:
+        if active_node := tree.nodes.active:
             if active_node.inputs.get('Fac'):
                 fac_input = active_node.inputs['Fac']
-                if not len(fac_input.links) > 0:
+                if len(fac_input.links) <= 0:
                     add_mask_to_node(context, clip, fac_input)
                 else:
                     print("the node ", active_node.name, "already has a node linked to Fac input")
             elif active_node.type == 'MATH':
                 # this is really ugly, but works
-                input_list = []
-                for input in active_node.inputs:
-                    if not len(input.links) > 0:
-                        input_list.append(input)
-                if len(input_list) == 2:
-                    fac_input = input_list[0]
-                    add_mask_to_node(context, clip, fac_input)
-                elif len(input_list) == 1:
+                input_list = [input for input in active_node.inputs if len(input.links) <= 0]
+                if len(input_list) in {2, 1}:
                     fac_input = input_list[0]
                     add_mask_to_node(context, clip, fac_input)
         else:
@@ -190,10 +175,7 @@ class MASK_OT_toggle_drawtype(Operator):
     def execute(self, context):
         sc = context.space_data
         sc.show_mask_smooth = True
-        if sc.mask_draw_type == "OUTLINE":
-            sc.mask_draw_type = "WHITE"
-        else:
-            sc.mask_draw_type = "OUTLINE"
+        sc.mask_draw_type = "WHITE" if sc.mask_draw_type == "OUTLINE" else "OUTLINE"
         return {'FINISHED'}
         
 
@@ -284,16 +266,15 @@ class MASK_OT_parent_marker_visibility(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        markers = set() # Using a set helps to avoid double entries
-        for p in selected_mask_points(context):
-            if p.parent.sub_parent:
-                markers.add(p.parent.sub_parent)
+        markers = {
+            p.parent.sub_parent
+            for p in selected_mask_points(context)
+            if p.parent.sub_parent
+        }
+
         for m in markers:
             track = context.space_data.clip.tracking.objects.active.tracks[m]
-            if track.hide == True:
-                track.hide = False
-            else:
-                track.hide = True
+            track.hide = track.hide != True
         return {'FINISHED'}
 
 
@@ -309,17 +290,10 @@ class MASK_OT_toggle_marker_visibility(Operator):
         return space.type == 'CLIP_EDITOR'
 
     def execute(self, context):
-        hidden = False
         tracks = context.space_data.clip.tracking.objects.active.tracks
+        hidden = any(t.hide == True for t in tracks)
         for t in tracks:
-            if t.hide == True:
-                hidden = True
-        if hidden:
-            for t in tracks:
-                t.hide = False
-        else:
-            for t in tracks:
-                t.hide = True
+            t.hide = not hidden
         return {'FINISHED'}
 
 

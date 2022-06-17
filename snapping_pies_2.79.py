@@ -67,9 +67,7 @@ class VIEW3D_OT_toggle_pivot(bpy.types.Operator):
  
     def execute(self, context):
         pivot = context.space_data.pivot_point
-        if pivot == "CURSOR":
-            context.space_data.pivot_point = "MEDIAN_POINT"
-        elif pivot == "INDIVIDUAL_ORIGINS":
+        if pivot in ["CURSOR", "INDIVIDUAL_ORIGINS"]:
             context.space_data.pivot_point = "MEDIAN_POINT"
         else:
             context.space_data.pivot_point = "CURSOR"
@@ -213,9 +211,6 @@ class VIEW3D_PIE_origin(Menu):
                 pie.operator("object.origin_set",icon="MESH_CUBE", text="Origin to Geometry").type="ORIGIN_GEOMETRY"
             else:
                 pie.operator("object.origin_to_geometry", icon="MESH_CUBE")
-        else:
-            pass
-
         pie.operator("view3d.snap_cursor_to_center", icon="CURSOR")
         pie.operator("wm.call_menu_pie", text="Element / Target", icon='PLUS').name = "VIEW3D_PIE_SnapTarget"
 

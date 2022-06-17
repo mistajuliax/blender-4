@@ -35,8 +35,7 @@ from mathutils import Vector
 def visible_selected(context):
     # return all selected tracks that are not hidden
     all_tracks = context.space_data.clip.tracking.tracks
-    tracks = [t for t in all_tracks if t.select and not t.hide]
-    return tracks
+    return [t for t in all_tracks if t.select and not t.hide]
 
 def invisible_selected(context):
     # if show_disabled is on, we don't see all markers, even though they might be selected
@@ -60,15 +59,13 @@ def get_marker_coordinates_in_pixels(context, track, frame_number):
     width, height = context.space_data.clip.size
     # return the marker coordinates in relation to the clip
     marker = track.markers.find_frame(frame_number)
-    vector = Vector((marker.co[0] * width, marker.co[1] * height))
-    return vector
+    return Vector((marker.co[0] * width, marker.co[1] * height))
 
 
 def marker_velocity(context, track, frame):
     marker_a = get_marker_coordinates_in_pixels(context, track, frame)
     marker_b = get_marker_coordinates_in_pixels(context, track, frame-1)
-    marker_velocity = marker_a - marker_b
-    return marker_velocity
+    return marker_a - marker_b
 
 
 def get_difference(track_slope, average_slope, axis):
@@ -121,8 +118,7 @@ def get_slope(context, track, frame):
     print(track.name, frame)
     v1 = marker_velocity(context, track, frame)
     v2 = marker_velocity(context, track, frame-1)
-    slope = v1-v2
-    return slope
+    return v1-v2
 
 
 def get_average_slope(context, track, frame, eval_time):
@@ -143,10 +139,12 @@ def get_marker_list(scene, tracks, fade_time):
         # only operate on selected tracks that are not hidden
         if t.select and not t.hide:
             # generate a list of all tracked frames
-            list = []
-            for i in range(scene.frame_start, scene.frame_end):
-                if t.markers.find_frame(i):
-                    list.append(i)
+            list = [
+                i
+                for i in range(scene.frame_start, scene.frame_end)
+                if t.markers.find_frame(i)
+            ]
+
             # if the list is longer than the threshold, add the list and the track to a dict
             # (a shorter list wouldn't make much sense)
             if len(list) > threshold:
@@ -163,15 +161,13 @@ def clear_weight_animation(scene, tracks, weight):
             except:
                 pass
         # set the weight back to 1 unless it's a zero weighted track
-        if not t in zero_weighted: 
+        if t not in zero_weighted: 
             t.weight = weight
 
 
 def find_zero_weighted_tracks(scene, tracks):
     current_frame = scene.frame_current
-    list = []
-    for t in tracks:
-        list.append(t)
+    list = list(tracks)
     for f in range(scene.frame_start, scene.frame_end):
         scene.frame_set(f)
         for t in list:
@@ -235,7 +231,7 @@ class CLIP_OT_filter_track_ends(Operator):
         valid_tracks = get_valid_tracks(context.scene, tracks)
         to_clean = {}
         for track, list in valid_tracks.items():
-            f = list[-1] 
+            f = list[-1]
             # first get the slope of the current track on current frame
             track_slope = get_slope(context, track, f)
             # if the track is as long as the evaluation time, calculate the average slope
@@ -244,13 +240,17 @@ class CLIP_OT_filter_track_ends(Operator):
                 for i in range(f-eval_time, f):
                     # get the slopes of all frames during the evaluation time
                     av_slope = get_slope(context, track, i)
-                    average_slope += av_slope 
+                    average_slope += av_slope
                 average_slope = average_slope / eval_time
                 # check abs difference for both values in the vector
                 for i in [0,1]:
                     # if the difference between average_slope and track_slope on any axis is above threshold,
                     # add to the to_clean dictionary
-                    if not track in to_clean and get_difference(track_slope, average_slope, i) > threshold:
+                    if (
+                        track not in to_clean
+                        and get_difference(track_slope, average_slope, i)
+                        > threshold
+                    ):
                         to_clean[track] = f
         # now we can disable the last frame of the identified tracks
         for track, frame in to_clean.items():
@@ -300,15 +300,16 @@ class CLIP_OT_select_foreground(Operator):
         for track, list in valid_tracks.items():
             f = list[-1]
             # first get the average of the last frame during evaluation time
-            if check_eval_time(track, f, eval_time) and not track in foreground:
+            if check_eval_time(track, f, eval_time) and track not in foreground:
                 track_average = get_average_slope(context, track, f, eval_time)
                 # then get the average of all other tracks
                 global_average = Vector().to_2d()
-                currently_valid_tracks = []
-                # first check if the other tracks are valid too.
-                for t in tracks:
-                    if check_eval_time(t, f, eval_time) and not t == track:
-                        currently_valid_tracks.append(t)
+                currently_valid_tracks = [
+                    t
+                    for t in tracks
+                    if check_eval_time(t, f, eval_time) and t != track
+                ]
+
                 for t in currently_valid_tracks:
                     other_average = get_average_slope(context, t, f, eval_time)
                     global_average += other_average
@@ -372,10 +373,12 @@ class CLIP_OT_weight_fade(Operator):
         clear_weight_animation(scene, tracks, 1)
         # then find out which tracks to operate on
         valid_tracks = get_valid_tracks(scene, tracks)
-        short = []
-        for track, list in valid_tracks.items():
-            if len(list) < self.fade_time * 2:
-                short.append(track)
+        short = [
+            track
+            for track, list in valid_tracks.items()
+            if len(list) < self.fade_time * 2
+        ]
+
         print(short)
         for t in short:
             del valid_tracks[t]
@@ -416,14 +419,14 @@ class CLIP_OT_mesh_reconstruction(Operator):
     def execute(self, context):
         tracks = visible_selected(context)
         invisibles = len(invisible_selected(context))
-        invisibles_warning = "Attention, there are %d selected tracks you don't see, due to 'show_disabled'. " % invisibles
-        number_warning = "The number of selected tracks indicates that you might try to generate a non-flat surface. That might not work as expected."
         # if there are enough tracks to form a mesh, abort
         if len(tracks) < 3:
             self.report({'ERROR'}, "You need at least 3 selected and solved tracks in order to generate a mesh.")
         else:
+            number_warning = "The number of selected tracks indicates that you might try to generate a non-flat surface. That might not work as expected."
             # if there are tracks selected, but not displayed, show a warning
             if invisibles > 0:
+                invisibles_warning = "Attention, there are %d selected tracks you don't see, due to 'show_disabled'. " % invisibles
                 if len(tracks) > 8:
                     self.report({'WARNING'}, invisibles_warning + number_warning)
                 else:
@@ -464,10 +467,7 @@ class CLIP_OT_goto_next_marker_gap(Operator):
             marker_list = [track for track in tracks if track.markers.find_frame(f)]
             # as soon as there are less than 8 markers, set the cursor there and stop
             if len(marker_list) < 8:
-                if not f == scene.frame_start:
-                    scene.frame_current = f-1
-                else:
-                    scene.frame_current = f
+                scene.frame_current = f-1 if f != scene.frame_start else f
                 break
         return ({'FINISHED'})
 
@@ -487,7 +487,7 @@ class CLIP_OT_create_zero_weighted_tracks(Operator):
         all_tracks = visible_selected(context)
         invisibles = invisible_selected(context)
         # make sure we don't operate on markers that are currently not visible
-        tracks = [t for t in all_tracks if not t in invisibles]
+        tracks = [t for t in all_tracks if t not in invisibles]
         clear_weight_animation(scene, tracks, 0)
         return {'FINISHED'}
 

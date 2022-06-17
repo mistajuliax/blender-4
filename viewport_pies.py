@@ -26,18 +26,17 @@ class VIEW3D_OT_show_all_wires(bpy.types.Operator):
         space = context.space_data
         return space.type == 'VIEW_3D'
 
-    def show_all_wires(context):
-        wired = []
+    def show_all_wires(self):
         clean = []
-        obs=[]
-        for ob in bpy.context.selected_objects:
-            if ob.type=="MESH" or ob.type=="CURVE":
-                obs.append(ob)
+        obs = [
+            ob
+            for ob in bpy.context.selected_objects
+            if ob.type in ["MESH", "CURVE"]
+        ]
+
+        wired = [ob for ob in obs if ob.show_wire]
         for ob in obs:
-            if ob.show_wire:
-                wired.append(ob)
-        for ob in obs:
-            if len(wired)>=1:
+            if wired:
                 ob.show_wire = False
                 ob.show_all_edges = False
             else:
@@ -61,21 +60,17 @@ class VIEW3D_OT_draw_wire_only(bpy.types.Operator):
         space = context.space_data
         return space.type == 'VIEW_3D'
 
-    def draw_only_wire(context):
-        wired = []
+    def draw_only_wire(self):
         normal = []
-        obs=[]
-        for ob in bpy.context.selected_objects:
-            if ob.type=="MESH" or ob.type=="CURVE":
-                obs.append(ob)
+        obs = [
+            ob
+            for ob in bpy.context.selected_objects
+            if ob.type in ["MESH", "CURVE"]
+        ]
+
+        wired = [ob for ob in obs if ob.draw_type=="WIRE"]
         for ob in obs:
-            if ob.draw_type=="WIRE":
-                wired.append(ob)
-        for ob in obs:
-            if len(wired)>=1:
-                ob.draw_type = "TEXTURED"
-            else:
-                ob.draw_type = "WIRE"
+            ob.draw_type = "TEXTURED" if wired else "WIRE"
     
  
     def execute(self, context):
